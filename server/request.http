@@ -1,0 +1,309 @@
+@baseUrl = http://localhost:3000
+@json = application/json
+
+# Run the requests top to bottom: later ones reuse ids from earlier responses.
+# (REST Client extension: click "Send Request" above any request.)
+
+
+################################################################
+# MOVIES
+################################################################
+
+### Create a banner movie  ->  201 { message, movieId }
+# @name createMovie
+POST {{baseUrl}}/movies
+Content-Type: {{json}}
+
+{
+  "title": "Iron Man 3",
+  "director": "Shane Black",
+  "releaseYear": 2013,
+  "genre": "Action, Adventure, Sci-Fi",
+  "isBanner": true
+}
+
+@movieId = {{createMovie.response.body.$.movieId}}
+
+
+### Create a normal (non-banner) movie
+# @name createPlainMovie
+POST {{baseUrl}}/movies
+Content-Type: {{json}}
+
+{
+  "title": "The Dark Knight",
+  "director": "Christopher Nolan",
+  "releaseYear": 2008,
+  "genre": "Action, Crime, Drama"
+}
+
+@plainMovieId = {{createPlainMovie.response.body.$.movieId}}
+
+
+### List all movies
+# @name getMovies
+GET {{baseUrl}}/movies
+
+
+### List banner movies, each with its assets { images, videos, trailers }
+# @name getBannerMovies
+GET {{baseUrl}}/movies/getBannerMovies
+
+
+### NEW: one movie with its assets - powers the movie detail page (/movie/:id in the web app)
+# -> { _id, title, director, releaseYear, genre, isBanner, assets: [{ images, videos, trailers }] }
+# "videos" holds the playable movie file(s); "trailers" holds YouTube/mp4 trailer URLs.
+GET {{baseUrl}}/movies/detail/{{movieId}}
+
+
+### 400 - id is not a valid ObjectId
+GET {{baseUrl}}/movies/detail/not-an-id
+
+
+### 404 - movie does not exist
+GET {{baseUrl}}/movies/detail/000000000000000000000000
+
+
+### NEW: edit a movie - send only the fields you want to change
+# Editable: title, director, releaseYear, genre, isBanner  ->  { message, movie }
+PATCH {{baseUrl}}/movies/detail/{{movieId}}
+Content-Type: {{json}}
+
+{
+  "title": "Iron Man 3 (Extended)",
+  "releaseYear": 2013,
+  "isBanner": true
+}
+
+
+### 400 - nothing valid to update
+PATCH {{baseUrl}}/movies/detail/{{movieId}}
+Content-Type: {{json}}
+
+{
+  "unknownField": 1
+}
+
+
+################################################################
+# CATEGORIES
+################################################################
+
+### Create a category  ->  { message }
+POST {{baseUrl}}/movies/addMovieCategory
+Content-Type: {{json}}
+
+{
+  "name": "Comedy",
+  "description": "Comedy"
+}
+
+
+### List categories with their movies
+# @name getCategories
+GET {{baseUrl}}/movies/categories
+
+@categoryId = {{getCategories.response.body.$[0]._id}}
+
+
+### NEW: one category by name (case-insensitive) with its movies and their posters
+# -> { _id, name, description, movies: [{ title, releaseYear, genre, director, assets: [{ images, videos, trailers }] }] }
+# This is what the Action / Comedy pages in the web app call.
+GET {{baseUrl}}/movies/categories/action
+
+
+### NEW: same for Comedy
+GET {{baseUrl}}/movies/categories/comedy
+
+
+### 404 - category does not exist
+GET {{baseUrl}}/movies/categories/does-not-exist
+
+
+### NEW: edit a category - send "name" and/or "description"  ->  { message, category }
+# The header menu uses the category names, so a rename shows up there too.
+PATCH {{baseUrl}}/movies/categories/{{categoryId}}
+Content-Type: {{json}}
+
+{
+  "name": "Action & Adventure",
+  "description": "Big, loud and fun."
+}
+
+
+### 409 - another category already has that name
+PATCH {{baseUrl}}/movies/categories/{{categoryId}}
+Content-Type: {{json}}
+
+{
+  "name": "Comedy"
+}
+
+
+### Add a movie to a category  (uses the first category above)
+POST {{baseUrl}}/movies/updateMoviesInCategory
+Content-Type: {{json}}
+
+{
+  "categoryId": "{{categoryId}}",
+  "movieId": "{{movieId}}"
+}
+
+
+### NEW: remove a movie from a category (the movie itself is kept)
+POST {{baseUrl}}/movies/removeMovieFromCategory
+Content-Type: {{json}}
+
+{
+  "categoryId": "{{categoryId}}",
+  "movieId": "{{movieId}}"
+}
+
+
+################################################################
+# ASSETS   (images / videos / trailers stored per movie)
+################################################################
+
+### Add a trailer URL to a movie.  "type" is one of: images | videos | trailers
+POST {{baseUrl}}/assets/addAsset
+Content-Type: {{json}}
+
+{
+  "movieId": "{{movieId}}",
+  "type": "trailers",
+  "url": "https://www.youtube.com/watch?v=BoohRoVA9WQ"
+}
+
+
+### Add an image URL to the same movie
+POST {{baseUrl}}/assets/addAsset
+Content-Type: {{json}}
+
+{
+  "movieId": "{{movieId}}",
+  "type": "images",
+  "url": "https://example.com/iron-man-3-poster.jpg"
+}
+
+
+### NEW: get all assets of one movie  ->  [{ movieId, images, videos, trailers }]
+GET {{baseUrl}}/assets/movie/{{movieId}}
+
+
+### NEW: edit an asset link (replaces oldUrl with newUrl, keeping its position)
+POST {{baseUrl}}/assets/updateMovieAsset
+Content-Type: {{json}}
+
+{
+  "movieId": "{{movieId}}",
+  "type": "images",
+  "oldUrl": "https://example.com/iron-man-3-poster.jpg",
+  "newUrl": "https://example.com/iron-man-3-poster-hd.jpg"
+}
+
+
+### NEW: make an asset "primary" = move it to the front (the site shows the first one)
+POST {{baseUrl}}/assets/setPrimaryAsset
+Content-Type: {{json}}
+
+{
+  "movieId": "{{movieId}}",
+  "type": "images",
+  "url": "https://example.com/iron-man-3-poster-hd.jpg"
+}
+
+
+### NEW: remove an asset link from a movie (does not delete the file from Cloudinary)
+POST {{baseUrl}}/assets/removeMovieAsset
+Content-Type: {{json}}
+
+{
+  "movieId": "{{movieId}}",
+  "type": "images",
+  "url": "https://example.com/iron-man-3-poster-hd.jpg"
+}
+
+
+### NEW: get a short-lived signature so the browser can upload straight to Cloudinary
+# -> { cloudName, apiKey, folder, timestamp, signature }   (the API secret is never returned)
+# The admin page uses this to upload large videos with a progress bar.
+POST {{baseUrl}}/assets/uploadSignature
+Content-Type: {{json}}
+
+{}
+
+
+### Upload a file to Cloudinary (multipart, max 10 MB)  ->  { message, url, publicId }
+# Returns the hosted url (use it with /assets/addAsset) and the publicId (use it to remove it).
+# @name uploadAsset
+POST {{baseUrl}}/assets/uploadAsset
+Content-Type: multipart/form-data; boundary=----MovieBoundary
+
+------MovieBoundary
+Content-Disposition: form-data; name="file"; filename="main.jpg"
+Content-Type: image/jpeg
+
+< ./client/public/main.jpg
+------MovieBoundary--
+
+@publicId = {{uploadAsset.response.body.$.publicId}}
+
+
+### Remove an uploaded image from Cloudinary by its publicId
+POST {{baseUrl}}/assets/removeAsset
+Content-Type: {{json}}
+
+{
+  "publicId": "{{publicId}}"
+}
+
+
+################################################################
+# ERROR CASES   (every error responds with { "error": "message" })
+################################################################
+
+### 400 - invalid JSON body
+POST {{baseUrl}}/movies
+Content-Type: {{json}}
+
+{ "title": "broken json",
+
+
+### 400 - validation failed (missing required fields)
+POST {{baseUrl}}/movies
+Content-Type: {{json}}
+
+{
+  "title": "No director or year"
+}
+
+
+### 400 - id is not a valid ObjectId
+GET {{baseUrl}}/assets/movie/not-an-id
+
+
+### 404 - movie does not exist
+GET {{baseUrl}}/assets/movie/000000000000000000000000
+
+
+### 400 - unsupported asset type
+POST {{baseUrl}}/assets/addAsset
+Content-Type: {{json}}
+
+{
+  "movieId": "{{movieId}}",
+  "type": "posters",
+  "url": "https://example.com/x.jpg"
+}
+
+
+### 400 - upload without a file
+POST {{baseUrl}}/assets/uploadAsset
+Content-Type: multipart/form-data; boundary=----MovieBoundary
+
+------MovieBoundary--
+
+
+### 404 - unknown endpoint (asks for JSON, so the API answers instead of the web page)
+GET {{baseUrl}}/movies/does-not-exist
+Accept: application/json

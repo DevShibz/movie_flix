@@ -1,0 +1,39 @@
+{
+  "name": "mongo-movie-manager",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon index.js",
+    "seed": "node scripts/seed-movies.js",
+    "build": "vite build",
+    "start": "cross-env NODE_ENV=production node index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "body-parser": "^2.4.0",
+    "cloudinary": "^2.11.0",
+    "express": "^5.3.0",
+    "mongodb": "^7.9.1",
+    "mongoose": "^9.12.3",
+    "multer": "^2.5.0",
+    "react-router-dom": "^7.18.6"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.7.0",
+    "cross-env": "^7.0.3",
+    "nodemon": "^3.1.14",
+    "postcss": "^8.5.33",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwindcss": "^3.4.19",
+    "vite": "^5.4.11"
+  },
+  "allowScripts": {
+    "esbuild@0.21.5": true
+  }
+}
