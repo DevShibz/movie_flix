@@ -31,7 +31,8 @@ Browse by category, preview trailers on hover, watch full-screen with a pause-to
 | 🛠️ **One-page admin studio** | Create categories, add movies, then drag in posters, trailers and the movie file. Uploads go straight to Cloudinary with a progress bar. Edit or remove anything later. |
 | 📱 **Responsive everywhere** | The menu is built from your categories and collapses into a hamburger on phones. |
 | ⚡ **Vite inside Node** | One `npm install`, one command. Express serves the API **and** runs Vite as middleware, so you get hot reload in development and a static build in production. |
-| 🧱 **Clean, modular backend** | Routers → controllers → services → models, with central error handling, validation, and a seed script. |
+| 🧱 **Clean, modular backend** | Routers → controllers → services → models, with central error handling and validation. |
+| ☁️ **Netlify-ready** | The React app deploys as static files and the Express API runs as a single serverless function. One `netlify.toml` configures it all. |
 
 ## 📸 Screenshots
 
@@ -64,6 +65,7 @@ Browse by category, preview trailers on hover, watch full-screen with a pause-to
 | **Backend** | Node.js, Express 5, Multer |
 | **Database** | MongoDB with Mongoose 9 |
 | **Media** | Cloudinary (signed, direct browser uploads) |
+| **Hosting** | Netlify: static site + one serverless function |
 | **Dev tools** | nodemon, a ready-made [`request.http`](server/request.http) for every endpoint |
 
 ## 🚀 Quick start
@@ -82,10 +84,7 @@ npm install
 cp .env.example .env        # Windows PowerShell: Copy-Item .env.example .env
 #    then open .env and fill in your values (see the table below)
 
-# 4. Add demo content: 22 movies with posters and trailers (optional)
-npm run seed
-
-# 5. Run
+# 4. Run
 npm run dev
 ```
 
@@ -110,7 +109,6 @@ Open **http://localhost:3000**. The home page opens on the **Action** category. 
 | `npm run dev` | Start Express with Vite middleware and hot reload (nodemon restarts the server on backend changes) |
 | `npm run build` | Build the React app into `server/dist` |
 | `npm start` | Run in production mode, serving the built app from `server/dist` (run `build` first) |
-| `npm run seed` | Insert the demo movies, categories, posters, trailers and a placeholder movie. Safe to run repeatedly. |
 
 ## 🏗️ How it works
 
@@ -118,7 +116,7 @@ Open **http://localhost:3000**. The home page opens on the **Action** category. 
 
 ```mermaid
 flowchart LR
-  B["Browser<br/>React + Tailwind"] -->|"/movies · /assets"| E
+  B["Browser<br/>React + Tailwind"] -->|"/api"| E
   subgraph N["Node.js process"]
     E["Express 5"] --> R["Routers"] --> C["Controllers"] --> S["Services"] --> M[("Mongoose models")]
     E -->|development| V["Vite middleware<br/>hot reload"]
@@ -137,6 +135,7 @@ flowchart LR
 
 ```text
 movie_flix/
+├── netlify.toml                 # Netlify build, redirects and function settings
 ├── client/                      # React source (served and built by Vite from the server)
 │   ├── index.html
 │   ├── tailwind.config.js
@@ -149,15 +148,16 @@ movie_flix/
 │       └── lib/                 # fetch wrapper · Cloudinary upload helper
 └── server/
     ├── index.js                 # starts the server
-    ├── app.js                   # builds the Express app
-    ├── vite.config.js          # Vite + Tailwind setup (root = ../client)
+    ├── app.js                   # Express app = API + React app (Vite in dev, built files in prod)
+    ├── api.js                   # the JSON API on its own (also used by the Netlify Function)
+    ├── netlify/functions/api.js # wraps the API as a Netlify Function
+    ├── vite.config.js           # Vite + Tailwind setup (root = ../client)
     ├── config/                  # environment + Cloudinary setup
     ├── router/                  # movies · categories · assets
     ├── controllers/             # thin request handlers
     ├── services/                # business logic and database/Cloudinary calls
     ├── models/                  # Movie · Category · MovieAsset
     ├── middleware/              # error handler · validation · uploads · frontend
-    ├── scripts/                 # seed script and data
     └── request.http             # every endpoint, ready to click in VS Code
 ```
 
@@ -208,30 +208,93 @@ Open **`/admin`**. It is intentionally not linked from the site menu.
 | `F` | Fullscreen |
 | `Esc` | Close the info panel or trailer |
 
+## ☁️ Deploy to Netlify
+
+MovieFlix deploys as a **static React site** plus **one serverless function** that runs the Express API. Everything is configured in [`netlify.toml`](netlify.toml), so there is nothing to set up by hand except your environment variables.
+
+```mermaid
+flowchart LR
+  U["Visitor"] --> N["Netlify"]
+  N -->|"/api/*"| F["Function<br/>Express API"]
+  N -->|"everything else"| S["Static React app<br/>server/dist"]
+  F --> DB[("MongoDB Atlas")]
+  U -. "direct upload from /admin" .-> CL[("Cloudinary")]
+```
+
+### 1. Create a free MongoDB Atlas database
+
+1. Create a cluster on [MongoDB Atlas](https://www.mongodb.com/atlas) and a database user.
+2. Copy the connection string (`mongodb+srv://…`) and add a database name, for example `…mongodb.net/movies`.
+3. Under **Network Access**, allow access from anywhere (`0.0.0.0/0`). Netlify functions don't have fixed IP addresses.
+
+### 2. Create the Netlify site
+
+1. Push this repository to GitHub.
+2. In Netlify choose **Add new site → Import an existing project** and pick the repo.
+3. Leave the build settings as detected. They are read from `netlify.toml`: base directory `server`, build command `npm run build`, publish directory `dist`.
+
+### 3. Add environment variables
+
+In **Site configuration → Environment variables**, add:
+
+| Variable | Required | Value |
+|---|---|---|
+| `MONGO_URI` | Yes | Your Atlas connection string |
+| `CLOUDINARY_CLOUD_NAME` | For uploads | From your Cloudinary dashboard |
+| `CLOUDINARY_API_KEY` | For uploads | From your Cloudinary dashboard |
+| `CLOUDINARY_API_SECRET` | For uploads | From your Cloudinary dashboard |
+
+### 4. Deploy
+
+Trigger a deploy (it starts automatically after step 2). When it finishes, open your site and visit `/admin` to add your first category and movies.
+
+<details>
+<summary><b>Prefer the command line?</b></summary>
+
+```bash
+npm install -g netlify-cli
+netlify login
+netlify init                 # run from the repository root; links the repo to a new site
+netlify deploy --build --prod
+```
+
+Add the environment variables first (`netlify env:set MONGO_URI "…"`) or in the dashboard.
+
+</details>
+
+### Good to know
+
+- **How requests are routed:** `/api/*` goes to the function, every other path serves the React app, with a fallback to `index.html` so `/movies/action`, `/movie/<id>` and `/admin` work on refresh.
+- **Large uploads are fine.** The admin uploads files **directly from the browser to Cloudinary**, so big videos never pass through the function. The server-side `/api/assets/uploadAsset` route is only for small images, because Netlify limits a function request to about 6 MB.
+- **Cold starts:** the first request after a quiet period can take a second or two while the function connects to MongoDB. Later requests reuse the connection.
+- **Protect `/admin`** before sharing the URL. It has no login yet (see [the admin studio](#️-the-admin-studio)).
+- **Local development is unchanged:** `npm run dev` still runs Express with Vite on `http://localhost:3000`.
+- **API on another host?** Set `VITE_API_URL` (for example `https://api.example.com`) as a build variable and the React app will call that origin instead of `/api`.
+
 ## 🔌 API reference
 
-All errors are returned as `{ "error": "message" }` with a meaningful status code (`400` validation, `404` not found, `409` duplicate, `413` file too large, `5xx` server). A ready-to-run collection of every request lives in [`server/request.http`](server/request.http) (use the VS Code [REST Client](https://marketplace.visualstudio.com/items?itemName=humao.rest-client) extension).
+All endpoints live under **`/api`**. All errors are returned as `{ "error": "message" }` with a meaningful status code (`400` validation, `404` not found, `409` duplicate, `413` file too large, `5xx` server). A ready-to-run collection of every request lives in [`server/request.http`](server/request.http) (use the VS Code [REST Client](https://marketplace.visualstudio.com/items?itemName=humao.rest-client) extension).
 
 ### Movies
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/movies` | All movies with their assets |
-| `POST` | `/movies` | Create a movie: `title`, `director`, `releaseYear`, `genre`, optional `isBanner` |
-| `GET` | `/movies/getBannerMovies` | Movies flagged as banners, with assets |
-| `GET` | `/movies/detail/:movieId` | One movie with its images, videos and trailers |
-| `PATCH` | `/movies/detail/:movieId` | Edit `title`, `director`, `releaseYear`, `genre`, `isBanner` |
+| `GET` | `/api/movies` | All movies with their assets |
+| `POST` | `/api/movies` | Create a movie: `title`, `director`, `releaseYear`, `genre`, optional `isBanner` |
+| `GET` | `/api/movies/getBannerMovies` | Movies flagged as banners, with assets |
+| `GET` | `/api/movies/detail/:movieId` | One movie with its images, videos and trailers |
+| `PATCH` | `/api/movies/detail/:movieId` | Edit `title`, `director`, `releaseYear`, `genre`, `isBanner` |
 
 ### Categories
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/movies/categories` | All categories with their movies |
-| `GET` | `/movies/categories/:name` | One category by name (case-insensitive) with movies and posters |
-| `POST` | `/movies/addMovieCategory` | Create a category: `name`, `description` |
-| `PATCH` | `/movies/categories/:categoryId` | Edit `name` and/or `description` |
-| `POST` | `/movies/updateMoviesInCategory` | Add a movie to a category: `categoryId`, `movieId` |
-| `POST` | `/movies/removeMovieFromCategory` | Remove a movie from a category (the movie is kept) |
+| `GET` | `/api/movies/categories` | All categories with their movies |
+| `GET` | `/api/movies/categories/:name` | One category by name (case-insensitive) with movies and posters |
+| `POST` | `/api/movies/addMovieCategory` | Create a category: `name`, `description` |
+| `PATCH` | `/api/movies/categories/:categoryId` | Edit `name` and/or `description` |
+| `POST` | `/api/movies/updateMoviesInCategory` | Add a movie to a category: `categoryId`, `movieId` |
+| `POST` | `/api/movies/removeMovieFromCategory` | Remove a movie from a category (the movie is kept) |
 
 ### Assets
 
@@ -239,22 +302,20 @@ All errors are returned as `{ "error": "message" }` with a meaningful status cod
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/assets/movie/:movieId` | All assets of a movie |
-| `POST` | `/assets/addAsset` | Add a URL: `movieId`, `type`, `url` |
-| `POST` | `/assets/updateMovieAsset` | Replace a URL, keeping its position: `movieId`, `type`, `oldUrl`, `newUrl` |
-| `POST` | `/assets/setPrimaryAsset` | Move a URL to the front: `movieId`, `type`, `url` |
-| `POST` | `/assets/removeMovieAsset` | Remove a URL from a movie (does not delete the Cloudinary file) |
-| `POST` | `/assets/uploadSignature` | Short-lived signature so the browser can upload straight to Cloudinary (the secret is never returned) |
-| `POST` | `/assets/uploadAsset` | Server-side multipart upload (`file` field, max 10 MB) → `{ url, publicId }` |
-| `POST` | `/assets/removeAsset` | Delete an uploaded image from Cloudinary by `publicId` |
+| `GET` | `/api/assets/movie/:movieId` | All assets of a movie |
+| `POST` | `/api/assets/addAsset` | Add a URL: `movieId`, `type`, `url` |
+| `POST` | `/api/assets/updateMovieAsset` | Replace a URL, keeping its position: `movieId`, `type`, `oldUrl`, `newUrl` |
+| `POST` | `/api/assets/setPrimaryAsset` | Move a URL to the front: `movieId`, `type`, `url` |
+| `POST` | `/api/assets/removeMovieAsset` | Remove a URL from a movie (does not delete the Cloudinary file) |
+| `POST` | `/api/assets/uploadSignature` | Short-lived signature so the browser can upload straight to Cloudinary (the secret is never returned) |
+| `POST` | `/api/assets/uploadAsset` | Server-side multipart upload (`file` field, max 10 MB) → `{ url, publicId }` |
+| `POST` | `/api/assets/removeAsset` | Delete an uploaded image from Cloudinary by `publicId` |
 
-## 🎞️ About the demo content
+## 🎞️ About the content
 
-`npm run seed` creates the **Action** and **Comedy** categories with 22 well-known films so the app looks great from the first run.
+The screenshots use well-known films for demonstration only. Posters and trailers belong to their respective owners. Start from an empty database and add **your own** movies, posters, trailers and video files from the [admin studio](#️-the-admin-studio).
 
-- **Posters** are hot-linked from Wikipedia's film pages, and **trailers** are YouTube embeds.
-- **The "movie file"** for each title is a placeholder: the open-licence short film *Big Buck Bunny* (© Blender Foundation, CC BY 3.0), so you can try the player. Replace it with your own videos from the admin.
-- All posters and trailers belong to their respective owners and are used here for demonstration only.
+Trailers can be YouTube links (they play inside the poster cards) and the movie file can be any direct video URL or a file you upload to Cloudinary.
 
 ## 🗺️ Ideas for what's next
 

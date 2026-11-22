@@ -11,7 +11,7 @@
 
 ### Create a banner movie  ->  201 { message, movieId }
 # @name createMovie
-POST {{baseUrl}}/movies
+POST {{baseUrl}}/api/movies
 Content-Type: {{json}}
 
 {
@@ -27,7 +27,7 @@ Content-Type: {{json}}
 
 ### Create a normal (non-banner) movie
 # @name createPlainMovie
-POST {{baseUrl}}/movies
+POST {{baseUrl}}/api/movies
 Content-Type: {{json}}
 
 {
@@ -42,31 +42,31 @@ Content-Type: {{json}}
 
 ### List all movies
 # @name getMovies
-GET {{baseUrl}}/movies
+GET {{baseUrl}}/api/movies
 
 
 ### List banner movies, each with its assets { images, videos, trailers }
 # @name getBannerMovies
-GET {{baseUrl}}/movies/getBannerMovies
+GET {{baseUrl}}/api/movies/getBannerMovies
 
 
 ### NEW: one movie with its assets - powers the movie detail page (/movie/:id in the web app)
 # -> { _id, title, director, releaseYear, genre, isBanner, assets: [{ images, videos, trailers }] }
 # "videos" holds the playable movie file(s); "trailers" holds YouTube/mp4 trailer URLs.
-GET {{baseUrl}}/movies/detail/{{movieId}}
+GET {{baseUrl}}/api/movies/detail/{{movieId}}
 
 
 ### 400 - id is not a valid ObjectId
-GET {{baseUrl}}/movies/detail/not-an-id
+GET {{baseUrl}}/api/movies/detail/not-an-id
 
 
 ### 404 - movie does not exist
-GET {{baseUrl}}/movies/detail/000000000000000000000000
+GET {{baseUrl}}/api/movies/detail/000000000000000000000000
 
 
 ### NEW: edit a movie - send only the fields you want to change
 # Editable: title, director, releaseYear, genre, isBanner  ->  { message, movie }
-PATCH {{baseUrl}}/movies/detail/{{movieId}}
+PATCH {{baseUrl}}/api/movies/detail/{{movieId}}
 Content-Type: {{json}}
 
 {
@@ -77,7 +77,7 @@ Content-Type: {{json}}
 
 
 ### 400 - nothing valid to update
-PATCH {{baseUrl}}/movies/detail/{{movieId}}
+PATCH {{baseUrl}}/api/movies/detail/{{movieId}}
 Content-Type: {{json}}
 
 {
@@ -90,7 +90,7 @@ Content-Type: {{json}}
 ################################################################
 
 ### Create a category  ->  { message }
-POST {{baseUrl}}/movies/addMovieCategory
+POST {{baseUrl}}/api/movies/addMovieCategory
 Content-Type: {{json}}
 
 {
@@ -101,7 +101,7 @@ Content-Type: {{json}}
 
 ### List categories with their movies
 # @name getCategories
-GET {{baseUrl}}/movies/categories
+GET {{baseUrl}}/api/movies/categories
 
 @categoryId = {{getCategories.response.body.$[0]._id}}
 
@@ -109,20 +109,20 @@ GET {{baseUrl}}/movies/categories
 ### NEW: one category by name (case-insensitive) with its movies and their posters
 # -> { _id, name, description, movies: [{ title, releaseYear, genre, director, assets: [{ images, videos, trailers }] }] }
 # This is what the Action / Comedy pages in the web app call.
-GET {{baseUrl}}/movies/categories/action
+GET {{baseUrl}}/api/movies/categories/action
 
 
 ### NEW: same for Comedy
-GET {{baseUrl}}/movies/categories/comedy
+GET {{baseUrl}}/api/movies/categories/comedy
 
 
 ### 404 - category does not exist
-GET {{baseUrl}}/movies/categories/does-not-exist
+GET {{baseUrl}}/api/movies/categories/does-not-exist
 
 
 ### NEW: edit a category - send "name" and/or "description"  ->  { message, category }
 # The header menu uses the category names, so a rename shows up there too.
-PATCH {{baseUrl}}/movies/categories/{{categoryId}}
+PATCH {{baseUrl}}/api/movies/categories/{{categoryId}}
 Content-Type: {{json}}
 
 {
@@ -132,7 +132,7 @@ Content-Type: {{json}}
 
 
 ### 409 - another category already has that name
-PATCH {{baseUrl}}/movies/categories/{{categoryId}}
+PATCH {{baseUrl}}/api/movies/categories/{{categoryId}}
 Content-Type: {{json}}
 
 {
@@ -141,7 +141,7 @@ Content-Type: {{json}}
 
 
 ### Add a movie to a category  (uses the first category above)
-POST {{baseUrl}}/movies/updateMoviesInCategory
+POST {{baseUrl}}/api/movies/updateMoviesInCategory
 Content-Type: {{json}}
 
 {
@@ -151,7 +151,7 @@ Content-Type: {{json}}
 
 
 ### NEW: remove a movie from a category (the movie itself is kept)
-POST {{baseUrl}}/movies/removeMovieFromCategory
+POST {{baseUrl}}/api/movies/removeMovieFromCategory
 Content-Type: {{json}}
 
 {
@@ -165,7 +165,7 @@ Content-Type: {{json}}
 ################################################################
 
 ### Add a trailer URL to a movie.  "type" is one of: images | videos | trailers
-POST {{baseUrl}}/assets/addAsset
+POST {{baseUrl}}/api/assets/addAsset
 Content-Type: {{json}}
 
 {
@@ -176,7 +176,7 @@ Content-Type: {{json}}
 
 
 ### Add an image URL to the same movie
-POST {{baseUrl}}/assets/addAsset
+POST {{baseUrl}}/api/assets/addAsset
 Content-Type: {{json}}
 
 {
@@ -187,11 +187,11 @@ Content-Type: {{json}}
 
 
 ### NEW: get all assets of one movie  ->  [{ movieId, images, videos, trailers }]
-GET {{baseUrl}}/assets/movie/{{movieId}}
+GET {{baseUrl}}/api/assets/movie/{{movieId}}
 
 
 ### NEW: edit an asset link (replaces oldUrl with newUrl, keeping its position)
-POST {{baseUrl}}/assets/updateMovieAsset
+POST {{baseUrl}}/api/assets/updateMovieAsset
 Content-Type: {{json}}
 
 {
@@ -203,7 +203,7 @@ Content-Type: {{json}}
 
 
 ### NEW: make an asset "primary" = move it to the front (the site shows the first one)
-POST {{baseUrl}}/assets/setPrimaryAsset
+POST {{baseUrl}}/api/assets/setPrimaryAsset
 Content-Type: {{json}}
 
 {
@@ -214,7 +214,7 @@ Content-Type: {{json}}
 
 
 ### NEW: remove an asset link from a movie (does not delete the file from Cloudinary)
-POST {{baseUrl}}/assets/removeMovieAsset
+POST {{baseUrl}}/api/assets/removeMovieAsset
 Content-Type: {{json}}
 
 {
@@ -227,7 +227,7 @@ Content-Type: {{json}}
 ### NEW: get a short-lived signature so the browser can upload straight to Cloudinary
 # -> { cloudName, apiKey, folder, timestamp, signature }   (the API secret is never returned)
 # The admin page uses this to upload large videos with a progress bar.
-POST {{baseUrl}}/assets/uploadSignature
+POST {{baseUrl}}/api/assets/uploadSignature
 Content-Type: {{json}}
 
 {}
@@ -236,7 +236,7 @@ Content-Type: {{json}}
 ### Upload a file to Cloudinary (multipart, max 10 MB)  ->  { message, url, publicId }
 # Returns the hosted url (use it with /assets/addAsset) and the publicId (use it to remove it).
 # @name uploadAsset
-POST {{baseUrl}}/assets/uploadAsset
+POST {{baseUrl}}/api/assets/uploadAsset
 Content-Type: multipart/form-data; boundary=----MovieBoundary
 
 ------MovieBoundary
@@ -250,7 +250,7 @@ Content-Type: image/jpeg
 
 
 ### Remove an uploaded image from Cloudinary by its publicId
-POST {{baseUrl}}/assets/removeAsset
+POST {{baseUrl}}/api/assets/removeAsset
 Content-Type: {{json}}
 
 {
@@ -263,14 +263,14 @@ Content-Type: {{json}}
 ################################################################
 
 ### 400 - invalid JSON body
-POST {{baseUrl}}/movies
+POST {{baseUrl}}/api/movies
 Content-Type: {{json}}
 
 { "title": "broken json",
 
 
 ### 400 - validation failed (missing required fields)
-POST {{baseUrl}}/movies
+POST {{baseUrl}}/api/movies
 Content-Type: {{json}}
 
 {
@@ -279,15 +279,15 @@ Content-Type: {{json}}
 
 
 ### 400 - id is not a valid ObjectId
-GET {{baseUrl}}/assets/movie/not-an-id
+GET {{baseUrl}}/api/assets/movie/not-an-id
 
 
 ### 404 - movie does not exist
-GET {{baseUrl}}/assets/movie/000000000000000000000000
+GET {{baseUrl}}/api/assets/movie/000000000000000000000000
 
 
 ### 400 - unsupported asset type
-POST {{baseUrl}}/assets/addAsset
+POST {{baseUrl}}/api/assets/addAsset
 Content-Type: {{json}}
 
 {
@@ -298,12 +298,12 @@ Content-Type: {{json}}
 
 
 ### 400 - upload without a file
-POST {{baseUrl}}/assets/uploadAsset
+POST {{baseUrl}}/api/assets/uploadAsset
 Content-Type: multipart/form-data; boundary=----MovieBoundary
 
 ------MovieBoundary--
 
 
-### 404 - unknown endpoint (asks for JSON, so the API answers instead of the web page)
-GET {{baseUrl}}/movies/does-not-exist
+### 404 - unknown endpoint (anything unmatched under /api returns a JSON 404)
+GET {{baseUrl}}/api/movies/does-not-exist
 Accept: application/json

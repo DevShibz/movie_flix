@@ -73,6 +73,10 @@ async function readBody(res) {
   return text;
 }
 
+// Every API call lives under /api. Set VITE_API_URL (for example https://api.example.com)
+// only if the API is hosted on a different origin than the website.
+const API_BASE = `${(import.meta.env?.VITE_API_URL ?? '').replace(/\/$/, '')}/api`
+
 function buildUrl(url, baseUrl = '', query) {
   const isAbsolute = /^https?:\/\//i.test(url);
   let full = isAbsolute ? url : `${baseUrl}${url}`;
@@ -113,7 +117,7 @@ export async function httpRequest(url, options = {}) {
     body,
     headers: inputHeaders = {},
     query,
-    baseUrl = '',
+    baseUrl = API_BASE,
     timeout = 15000,
     signal,
     messages,

@@ -1,19 +1,13 @@
 const express = require('express');
-const routes = require('./router');
-const apiNotFound = require('./middleware/apiNotFound');
+const { mountApi } = require('./api');
 const attachFrontend = require('./middleware/frontend');
 const errorHandler = require('./middleware/errorHandler');
 
+// The API plus the React app: Vite middleware in development, built files in production.
 async function createApp() {
     const app = express();
-
-    app.use(express.json());
-    app.use(express.urlencoded({ extended: true }));
-
-    app.use(routes);
-    app.use(apiNotFound);
+    mountApi(app);
     await attachFrontend(app);
-
     app.use(errorHandler);
     return app;
 }

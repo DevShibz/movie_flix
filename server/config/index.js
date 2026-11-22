@@ -2,10 +2,13 @@ const path = require('path');
 
 const root = path.join(__dirname, '..');
 
-try {
-    process.loadEnvFile(path.join(root, '.env'));
-} catch (error) {
-    if (error.code !== 'ENOENT') throw error;
+// Local development reads server/.env. On Netlify there is no .env file: variables come from the site settings.
+if (typeof process.loadEnvFile === 'function') {
+    try {
+        process.loadEnvFile(path.join(root, '.env'));
+    } catch (error) {
+        if (error.code !== 'ENOENT') throw error;
+    }
 }
 
 const env = process.env.NODE_ENV || 'development';

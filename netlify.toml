@@ -1,0 +1,38 @@
+# Netlify build + routing for MovieFlix.
+#
+# - The React app is built with Vite (config in server/vite.config.js, source in client/)
+#   and published as static files from server/dist.
+# - The Express API runs as one Netlify Function (server/netlify/functions/api.js).
+#
+# Set these in Netlify: Site configuration -> Environment variables
+#   MONGO_URI               MongoDB Atlas connection string (required)
+#   CLOUDINARY_CLOUD_NAME   needed for uploads in /admin
+#   CLOUDINARY_API_KEY      needed for uploads in /admin
+#   CLOUDINARY_API_SECRET   needed for uploads in /admin
+
+[build]
+  base = "server"
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+  AWS_LAMBDA_JS_RUNTIME = "nodejs22.x"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+  # Keep the database drivers as real packages instead of bundling them into the function file.
+  external_node_modules = ["mongoose", "mongodb"]
+
+# API calls go to the function. Order matters: this rule must come before the catch-all below.
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+
+# Single-page app fallback, so /movies/action, /movie/<id> and /admin work on refresh.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
