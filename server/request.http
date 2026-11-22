@@ -243,7 +243,7 @@ Content-Type: multipart/form-data; boundary=----MovieBoundary
 Content-Disposition: form-data; name="file"; filename="main.jpg"
 Content-Type: image/jpeg
 
-< ./client/public/main.jpg
+< ../client/public/main.jpg
 ------MovieBoundary--
 
 @publicId = {{uploadAsset.response.body.$.publicId}}
